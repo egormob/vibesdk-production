@@ -131,9 +131,15 @@ export async function getGlobalConfigurableSettings(env: Env): Promise<GlobalCon
     }
 }
 
-export async function getUserConfigurableSettings(env: Env, userId: string, globalConfig: GlobalConfigurableSettings): Promise<GlobalConfigurableSettings> {
+export async function getUserConfigurableSettings(
+    env: Env,
+    userId: string,
+    globalConfig?: GlobalConfigurableSettings,
+): Promise<GlobalConfigurableSettings> {
+    const baseConfig = globalConfig ?? await getGlobalConfigurableSettings(env);
+
     if (!userId) {
-        return globalConfig;
+        return baseConfig;
     }
 
     if (invocationUserCache.has(userId)) {
@@ -147,23 +153,23 @@ export async function getUserConfigurableSettings(env: Env, userId: string, glob
         
         if (!storedConfigJson) {
             // No stored config, use defaults
-            return globalConfig;
+            return baseConfig;
         }
-        
+
         // Parse stored configuration
         const storedConfig: StoredConfig = JSON.parse(storedConfigJson);
-        
+
         // Deep merge configurations (stored config overrides defaults)
-        const mergedConfig = deepMerge<GlobalConfigurableSettings>(globalConfig, storedConfig);
-        
-        logger.info(`Loaded configuration with overrides from KV for user ${userId}`, { globalConfig, storedConfig, mergedConfig });
+        const mergedConfig = deepMerge<GlobalConfigurableSettings>(baseConfig, storedConfig);
+
+        logger.info(`Loaded configuration with overrides from KV for user ${userId}`, { baseConfig, storedConfig, mergedConfig });
         invocationUserCache.set(userId, mergedConfig);
         return mergedConfig;
-        
+
     } catch (error) {
         logger.error(`Failed to load configuration from KV for user ${userId}, using defaults`, error);
         // On error, fallback to default configuration
-        return globalConfig;
+        return baseConfig;
     }
 }
     
